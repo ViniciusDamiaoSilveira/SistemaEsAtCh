@@ -1,0 +1,237 @@
+
+DROP TABLE IF EXISTS item_order CASCADE;
+DROP TABLE IF EXISTS image CASCADE;
+DROP TABLE IF EXISTS message CASCADE;
+DROP TABLE IF EXISTS address CASCADE;
+DROP TABLE IF EXISTS credit_card CASCADE;
+DROP TABLE IF EXISTS item_rating CASCADE;
+DROP TABLE IF EXISTS item CASCADE;
+DROP TABLE IF EXISTS client;
+
+
+CREATE TABLE client (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    cpf VARCHAR(11) UNIQUE NOT NULL,
+    email VARCHAR(50) UNIQUE NOT NULL,
+    phone_number VARCHAR(50),
+    wallet DECIMAL,
+    rating DECIMAL CHECK (rating > 0 AND rating <= 5)
+);
+
+CREATE TABLE message (
+    id SERIAL PRIMARY KEY,
+    id_sender INT NOT NULL REFERENCES client (id),
+    id_receiver INT NOT NULL REFERENCES client (id),
+    datetime_sent TIMESTAMP NOT NULL,
+    message vARCHAR(250) NOT NULL
+);
+
+CREATE TABLE image (
+    id SERIAL PRIMARY KEY,
+    id_message INT NOT NULL REFERENCES message (id),
+    image VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE address (
+    id SERIAL PRIMARY KEY,
+    id_client INT NOT NULL REFERENCES client (id),
+    postal_cod VARCHAR(8) NOT NULL,
+    address1 VARCHAR(50) NOT NULL,
+    address2 VARCHAR(50),
+    address3 VARCHAR(50),
+    city VARCHAR(50) NOT NULL,
+    state VARCHAR(20) NOT NULL,
+    country VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE credit_card (
+    id SERIAL NOT NULL,
+    id_client INT NOT NULL REFERENCES client (id),
+    cc_number VARCHAR(16) NOT NULL,
+    cvv VARCHAR(3) NOT NULL
+);
+
+CREATE TABLE item (
+    id SERIAL PRIMARY KEY,
+    id_seller INT NOT NULL REFERENCES client (id),
+    name VARCHAR(50) NOT NULL,
+    description VARCHAR(100),
+    price DECIMAL NOT NULL CHECK (price > 0),
+    stock INT NOT NULL,
+    rating DECIMAL CHECK (rating > 0 AND rating <= 5)
+);
+
+CREATE TABLE item_order (
+    id SERIAL NOT NULL,
+    id_item INT NOT NULL REFERENCES item (id),
+    id_buyer INT NOT NULL REFERENCES client (id),
+    id_address INT NOT NULL REFERENCES address (id),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    total_price DECIMAL CHECK (total_price > 0),
+
+    CONSTRAINT pk_item_order
+        PRIMARY KEY (id, id_item, id_buyer)
+);
+
+CREATE TABLE item_rating (
+    id_item INT NOT NULL REFERENCES item (id),
+    id_buyer INT NOT NULL REFERENCES client (id),
+    rating INT NOT NULL CHECK (rating > 0 AND rating <= 5),
+    description VARCHAR(100)
+);
+
+
+ALTER TABLE client
+ADD CONSTRAINT wallet_check
+CHECK (wallet >= 0);
+
+ALTER TABLE client
+ALTER COLUMN wallet
+SET DEFAULT 0;
+
+ALTER TABLE address
+RENAME COLUMN postal_cod TO postal_code;
+
+
+INSERT INTO client (name, cpf, email, phone_number, wallet)
+VALUES ('Tony Silveira', '33344455566', 'tonysilveira@mail.com', '19 992664875', 350.65);
+
+INSERT INTO client (name, cpf, email, phone_number, wallet, rating)
+VALUES ('Gustavo Márcio', '44455566677', 'gustamarci@mail.com', '19 993674582', 812.65, 4.9);
+
+INSERT INTO client (name, cpf, email, phone_number, wallet, rating)
+VALUES ('Beto Ferreira', '55566677788', 'betoferre@mail.com', '19 9988123647', 310.65, 1.3);
+
+INSERT INTO client (name, cpf, email, phone_number, wallet, rating)
+VALUES ('Luciano Silva', '66677788899', 'lucianosil@mail.com', '19 9978781236 ', 150.00, 5.0);
+
+INSERT INTO client (name, cpf, email, phone_number, wallet, rating)
+VALUES ('Guilherme Oliveira', '77788899910', 'guioliveira@mail.com', '19 9978822364', 650.65, 4.2);
+
+INSERT INTO client (name, cpf, email, phone_number, wallet)
+VALUES ('Michel Fidelis', '11122244452', 'michelfidel@mail.com', '19 992644505', 930.23);
+
+INSERT INTO client (name, cpf, email, phone_number, wallet)
+VALUES ('Carlos Santana', '99988774424', 'carlosanta@mail.com', '19 992666055', 330.62);
+
+
+SELECT * FROM client;
+
+
+
+INSERT INTO address (id_client, postal_code, address1, address2, city, state, country)
+VALUES (1, 11133377, 'Rua das Palmeiras 23', 'Vila Corinthians', 'Pindagoiabada', 'São Paulo', 'Brasil');
+
+INSERT INTO address (id_client, postal_code, address1, address2, city, state, country)
+VALUES (2, 11133334, 'Rua das Rosas 910', 'Jardim Floral', 'Santo Antônio do Paraíso', 'Minas Gerais', 'Brasil');
+
+INSERT INTO address (id_client, postal_code, address1, address2, city, state, country)
+VALUES (2, 33219441, 'Rua dos Cocais 160', 'Jardim dos Cafezais', 'São José do Rio Preto', 'São Paulo', 'Brasil');
+
+INSERT INTO address (id_client, postal_code, address1, address2, city, state, country)
+VALUES (3, 2727233, 'Rua dos Tucanos 60', 'Villa', 'Cagandipua', 'São Paulo', 'Brasil');
+
+INSERT INTO credit_card (id_client, cc_number, cvv)
+VALUES (1, '4444999988883333', '212');
+
+INSERT INTO credit_card (id_client, cc_number, cvv)
+VALUES (3, '4444888800002222', '007');
+
+
+INSERT INTO item (id_seller, name, price, stock)
+VALUES (1, 'Skate', 400, 10);
+
+
+INSERT INTO item_order (id_item, id_buyer, id_address, quantity)
+VALUES (1, 2, 2, 5);
+
+INSERT INTO item_rating (id_item, id_buyer, rating, description)
+VALUES (1, 2, 5, 'Skate muito bom');
+
+
+DELETE FROM client
+WHERE name LIKE 'Apollo Brian';
+
+
+UPDATE address
+SET address1 = 'Rua das Bananeiras 23'
+WHERE id_client = 1;
+
+
+CREATE OR REPLACE VIEW clients_addresses AS
+    SELECT c.id, c.name, c.cpf, c.email, c.phone_number, c.wallet,
+        a.postal_code, a.address1, a.address2, a.address3,
+        a.city, a.state, a.country
+    FROM client c, address a
+    WHERE c.id = a.id_client
+    ORDER BY c.id ASC;
+SELECT *
+FROM clients_addresses;
+
+--- Visão que retorna todos os itens da loja
+CREATE OR REPLACE VIEW all_items AS
+    SELECT i.id, i.description, i.price, i.stock, i.rating,
+        c.name seller
+    FROM item i, client c
+    WHERE c.id = i.id_seller
+    AND i.stock > 0
+    ORDER BY i.id ASC;
+SELECT *
+FROM all_items;
+
+---- Função que retorna o item mais caro da loja
+CREATE OR REPLACE FUNCTION most_expensive_item()
+RETURNS DECIMAL AS $$
+    DECLARE expensive_item DECIMAL;
+BEGIN
+    SELECT MAX(price) INTO expensive_item
+    FROM item;
+
+    RETURN expensive_item;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT most_expensive_item;
+
+---- Procedimento que seleciona todos os itens de um vendedor
+CREATE OR REPLACE PROCEDURE select_seller_items(id INT)
+AS $$
+    BEGIN
+        SELECT c.name, i.name
+        FROM client c, item i
+        WHERE c.id = i.id_seller;
+    END;
+$$ LANGUAGE plpgsql;
+CALL select_seller_items(2);
+
+---- Gatilho que define o valor final do pedido
+CREATE OR REPLACE FUNCTION f_update_total_price()
+RETURNS TRIGGER AS $$
+    DECLARE _total_price INT;
+BEGIN
+    SELECT i.price * io.quantity INTO _total_price
+    FROM item i, item_order io
+    WHERE i.id = io.id_item
+    AND io.id = NEW.id;
+
+    UPDATE item_order
+    SET total_price = _total_price
+    WHERE id = NEW.id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER t_update_total_price
+AFTER INSERT ON item_order
+FOR EACH ROW
+EXECUTE FUNCTION f_update_total_price();
+
+----- Inserção de dados após a criação do gatilho
+INSERT INTO item_order (id_item, id_buyer, id_address, quantity)
+VALUES (1, 3, 4, 1);
+
+
+
+https://onecompiler.com/postgresql/3z5grem7t
